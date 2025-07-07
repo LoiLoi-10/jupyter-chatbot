@@ -1,9 +1,10 @@
 {
   "name": "jupyter-chatbot",
   "publisher": "ethanloi",
+  "license": "MIT",
   "repository": {
   "type": "git",
-  "url": "https://github.com/yourusername/jupyter-chatbot.git"
+  "url": "https://github.com/LoiLoi-10/jupyter-chatbot.git"
   },
   "displayName": "jupyter-chatbot",
   "description": "RAG for Jupyter Notebook",
