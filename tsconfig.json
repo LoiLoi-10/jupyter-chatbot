@@ -5,7 +5,7 @@
     "lib": ["ES2020"],
     "sourceMap": true,
     "rootDir": "src",
-    "outDir": "dist",      // CRITICAL: Add output directory
+    "outDir": "dist",      //  Add output directory
     "strict": true,
     "esModuleInterop": true,  // Required for axios
     "skipLibCheck": true,     // Avoid unnecessary type checks
@@ -16,5 +16,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*.ts"]  // CRITICAL: Include all TypeScript files
+  "include": ["src/**/*.ts"]  //  Include all TypeScript files
 }

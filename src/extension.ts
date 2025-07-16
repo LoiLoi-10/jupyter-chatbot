@@ -1,207 +1,225 @@
 import * as vscode from 'vscode';
-import * as childProcess from 'child_process';
-import { ChatbotPanel } from './webviewPanel'; // ADDED IMPORT
+import axios from 'axios';  // REMOVED: Unused imports
 
-interface ManagedProcess {
-    process: childProcess.ChildProcess;
-    pid: number;
-}
+class ChatbotViewProvider implements vscode.WebviewViewProvider {
+    private _view?: vscode.WebviewView;
+    private _context: vscode.ExtensionContext;
+    private _ollamaEndpoint = 'http://localhost:11435/api/generate';  
 
-const activeProcesses: ManagedProcess[] = [];
-
-class ChatbotNotebookSerializer implements vscode.NotebookSerializer {
-    async deserializeNotebook(
-        content: Uint8Array, 
-        _token: vscode.CancellationToken
-    ): Promise<vscode.NotebookData> {
-        try {
-            const contentString = Buffer.from(content).toString('utf-8');
-            const rawContent = JSON.parse(contentString);
-            
-            const cells = rawContent.cells.map((cell: any) => {
-                return new vscode.NotebookCellData(
-                    cell.cell_type === 'code' ? 
-                        vscode.NotebookCellKind.Code : 
-                        vscode.NotebookCellKind.Markup,
-                    Array.isArray(cell.source) ? cell.source.join('') : cell.source,
-                    cell.cell_type === 'code' ? 'python' : 'markdown'
-                );
-            });
-            
-            return new vscode.NotebookData(cells);
-        } catch (error) {
-            console.error(`Failed to parse notebook: ${error}`);
-            return new vscode.NotebookData([]);
-        }
+    constructor(context: vscode.ExtensionContext) {
+        this._context = context;
     }
 
-    async serializeNotebook(
-        data: vscode.NotebookData, 
+    public resolveWebviewView(
+        webviewView: vscode.WebviewView,
+        _context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
-    ): Promise<Uint8Array> {
-        const notebookContent = {
-            cells: data.cells.map(cell => ({
-                cell_type: cell.kind === vscode.NotebookCellKind.Code ? 'code' : 'markdown',
-                source: cell.value.split('\n'),
-                metadata: {}
-            })),
-            metadata: {
-                kernelspec: {
-                    display_name: "Python 3",
-                    language: "python",
-                    name: "python3"
-                },
-                language_info: {
-                    name: "python"
-                }
-            }
+    ) {
+        this._view = webviewView;
+        webviewView.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [this._context.extensionUri]
         };
+
+        webviewView.webview.html = this._getWebviewContent(webviewView.webview);
+
+        webviewView.show?.(true);
+
+        webviewView.webview.onDidReceiveMessage(async (message) => {
+            switch (message.command) {
+                case 'submit':
+                    const response = await this._getOllamaResponse(message.text);
+                    this._view?.webview.postMessage({ 
+                        command: 'response', 
+                        text: response
+                    });
+                    break;
+                
+                case 'getContext':
+                    this._view?.webview.postMessage({ 
+                        command: 'contextUpdate',
+                        context: this._getNotebookContext()
+                    });
+                    break;
+            }
+        });
+
+        // Send initial context
+        this._view?.webview.postMessage({ 
+            command: 'contextUpdate',
+            context: this._getNotebookContext()
+        });
+    }
+
+    private async _getOllamaResponse(prompt: string): Promise<string> {
+        try {
+            const context = this._getNotebookContext();
+            const fullPrompt = `Notebook Context:\n${context}\n\nQuestion: ${prompt}\nAnswer:`;
+            
+            const response = await axios.post(this._ollamaEndpoint, {
+                model: 'llama3',
+                prompt: fullPrompt,
+                stream: false,
+                options: {
+                    temperature: 0.7,
+                    num_ctx: 4096
+                }
+            });
+
+            return response.data.response || "No response from model";
+        } catch (error) {
+            console.error('Ollama API error:', error);
+            return `Error: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }
+
+    private _getNotebookContext(): string {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor?.document?.fileName.endsWith('.ipynb')) {
+            return "No active Jupyter notebook found.";
+        }
+
+        try {
+            const notebook = JSON.parse(editor.document.getText());
+            return notebook.cells
+                .map((cell: any) => {
+                    if (cell.cell_type === 'markdown') {
+                        return `## Markdown\n${cell.source.join('')}`;
+                    } else if (cell.cell_type === 'code') {
+                        return `## Code\n${cell.source.join('')}`;
+                    }
+                    return '';
+                })
+                .filter(Boolean)
+                .join('\n\n');
+        } catch (error) {
+            return "Failed to parse notebook content.";
+        }
+    }
+
+    private _getWebviewContent(webview: vscode.Webview): string {
+        const styleUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._context.extensionUri, 'media', 'styles.css')
+        );
         
-        return Buffer.from(JSON.stringify(notebookContent, null, 2), 'utf-8');
+        return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Jupyter Chatbot</title>
+            <link href="${styleUri}" rel="stylesheet">
+            <script type="module" src="https://cdn.jsdelivr.net/npm/@vscode/webview-ui-toolkit/dist/toolkit.min.js"></script>
+        </head>
+        <body>
+            <div class="chat-container">
+                <div id="context-view">
+                    <h3>Notebook Context</h3>
+                    <div id="context-content"></div>
+                </div>
+                <div id="chat-history"></div>
+                <div class="input-area">
+                    <vscode-text-area id="user-input" placeholder="Ask about your notebook..."></vscode-text-area>
+                    <vscode-button id="send-button">Send</vscode-button>
+                </div>
+            </div>
+            <script>
+                const vscode = acquireVsCodeApi();
+                
+                // Handle messages from extension
+                window.addEventListener('message', event => {
+                    const message = event.data;
+                    switch (message.command) {
+                        case 'response':
+                            addMessage(message.text, false);
+                            break;
+                        case 'contextUpdate':
+                            updateContext(message.context);
+                            break;
+                    }
+                });
+                
+                function updateContext(context) {
+                    document.getElementById('context-content').textContent = context;
+                }
+                
+                function addMessage(text, isUser) {
+                    const history = document.getElementById('chat-history');
+                    const message = document.createElement('div');
+                    message.className = isUser ? 'user-message' : 'bot-message';
+                    message.textContent = text;
+                    history.appendChild(message);
+                    // Auto-scroll to bottom
+                    history.scrollTop = history.scrollHeight;
+                }
+                
+                document.getElementById('send-button').addEventListener('click', () => {
+                    const input = document.getElementById('user-input');
+                    const text = input.value.trim();
+                    if (text) {
+                        addMessage(text, true);
+                        vscode.postMessage({ command: 'submit', text });
+                        input.value = '';
+                    }
+                });
+                
+                // Initial context request
+                vscode.postMessage({ command: 'getContext' });
+            </script>
+        </body>
+        </html>`;
     }
 }
 
-function cleanUpProcesses() {
-    const processesToKill = [...activeProcesses];
-    activeProcesses.length = 0;
+export async function activate(context: vscode.ExtensionContext) {
+    console.log('Jupyter Chatbot extension activating...');
 
-    processesToKill.forEach(procInfo => {
-        try {
-            if (procInfo.process && !procInfo.process.killed && procInfo.pid) {
-                console.log(`Terminating process: ${procInfo.pid}`);
-                
-                if (process.platform === 'win32') {
-                    try {
-                        // Use taskkill for Windows
-                        childProcess.execSync(`taskkill /pid ${procInfo.pid} /T /F`);
-                    } catch (error) {
-                        console.warn(`Failed to terminate ${procInfo.pid}: ${error}`);
-                    }
-                } else {
-                    try {
-                        // Use kill for Linux/Mac
-                        process.kill(procInfo.pid, 'SIGTERM');
-                        setTimeout(() => {
-                            try {
-                                process.kill(procInfo.pid, 'SIGKILL');
-                            } catch {} // Ignore errors if already dead
-                        }, 2000);
-                    } catch (error) {
-                        console.warn(`Error terminating process ${procInfo.pid}:`, error);
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn(`Error during cleanup: ${error}`);
-        }
-    });
-}
+    // 1. Verify Jupyter extension is available
+    const jupyterExtension = vscode.extensions.getExtension('ms-toolsai.jupyter');
+    if (!jupyterExtension) {
+        vscode.window.showErrorMessage('Jupyter extension is required for this chatbot to work');
+        return;
+    }
+    await jupyterExtension.activate();
 
-export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "jupyter-chatbot" is now active!');
-
-    // Register notebook serializer
+    // 2. Register Chatbot View Provider
+    const provider = new ChatbotViewProvider(context);
     context.subscriptions.push(
-        vscode.workspace.registerNotebookSerializer(
-            'jupyter-chatbot',
-            new ChatbotNotebookSerializer(),
-            { transientOutputs: true }
-        )
+        vscode.window.registerWebviewViewProvider('jupyter-chatbot-view', provider)
     );
 
-    // Register commands
+    // 3. Test command
     context.subscriptions.push(
-        vscode.commands.registerCommand('jupyter-chatbot.helloWorld', () => {
-            vscode.window.showInformationMessage('Hello World from jupyter-chatbot!');
-        })
-    );
-
-    // ADDED CHATBOT COMMAND REGISTRATION
-    context.subscriptions.push(
-        vscode.commands.registerCommand('jupyter-chatbot.openChat', () => {
-            ChatbotPanel.createOrShow(context);
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('jupyter-chatbot.startKernel', async () => {
+        vscode.commands.registerCommand('jupyter-chatbot.testModel', async () => {
             try {
-                // Get the active Python interpreter
-                const pythonPath = await getPythonPath();
-                if (!pythonPath) {
-                    vscode.window.showErrorMessage('Python interpreter not found. Install Python and reload window.');
-                    return;
-                }
-
-                // Start the kernel
-                const kernelProcess = childProcess.spawn(pythonPath, ['-m', 'ipykernel_launcher', '-f', '{connection_file}']);
-                const pid = kernelProcess.pid;
-                
-                if (pid) {
-                    activeProcesses.push({
-                        process: kernelProcess,
-                        pid: pid
-                    });
-                    
-                    console.log(`Started kernel with PID: ${pid} using Python: ${pythonPath}`);
-                    vscode.window.showInformationMessage(`Started kernel (PID: ${pid})`);
-                    
-                    kernelProcess.on('exit', (code) => {
-                        console.log(`Kernel process ${pid} exited with code ${code}`);
-                        const index = activeProcesses.findIndex(p => p.pid === pid);
-                        if (index !== -1) {activeProcesses.splice(index, 1);}
-                    });
-                    
-                    kernelProcess.on('error', (err) => {
-                        console.error(`Kernel process error: ${err.message}`);
-                        vscode.window.showErrorMessage(`Kernel error: ${err.message}`);
-                    });
-                } else {
-                    vscode.window.showErrorMessage('Failed to start kernel: No PID assigned');
-                }
-            } catch (error: any) {
-                vscode.window.showErrorMessage(`Failed to start kernel: ${error.message}`);
+                const testResponse = await queryOllamaModel("Respond with just 'TEST PASSED'");
+                vscode.window.showInformationMessage(`Ollama response: ${testResponse.trim()}`);
+            } catch (error) {
+                vscode.window.showErrorMessage(`Connection failed: ${error}`);
             }
         })
     );
 
-    // Clean up on deactivation
-    context.subscriptions.push({
-        dispose: () => {
-            console.log('Cleaning up processes...');
-            cleanUpProcesses();
-        }
-    });
+    console.log('Jupyter Chatbot extension activated successfully');
 }
 
 export function deactivate() {
     console.log('Deactivating extension...');
-    cleanUpProcesses();
 }
 
-// Helper function to get the active Python path
-async function getPythonPath(): Promise<string | undefined> {
+async function queryOllamaModel(prompt: string): Promise<string> {
     try {
-        // First try to get from Python extension
-        const extension = vscode.extensions.getExtension('ms-python.python');
-        if (extension) {
-            if (!extension.isActive) {await extension.activate();}
-            const pythonPath = extension.exports.settings.getExecutionDetails().execCommand[0];
-            if (pythonPath) {return pythonPath;}
-        }
-        
-        // Fallback to system Python
-        const pythonExecutables = ['python3', 'python'];
-        for (const exe of pythonExecutables) {
-            try {
-                childProcess.execSync(`${exe} --version`);
-                return exe;
-            } catch {}
-        }
-        
-        return undefined;
+        const response = await axios.post('http://localhost:11435/api/generate', {
+            model: 'llama3',
+            prompt: prompt,
+            stream: false,
+            options: {
+                temperature: 0.7,
+                num_ctx: 4096
+            }
+        });
+        return response.data.response || "No response from model";
     } catch (error) {
-        console.error('Error getting Python path:', error);
-        return undefined;
+        throw new Error(`Ollama query failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 }

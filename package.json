@@ -3,49 +3,29 @@
   "publisher": "ethanloi",
   "license": "MIT",
   "repository": {
-  "type": "git",
-  "url": "https://github.com/LoiLoi-10/jupyter-chatbot.git"
+    "type": "git",
+    "url": "https://github.com/LoiLoi-10/jupyter-chatbot.git"
   },
-  "displayName": "jupyter-chatbot",
-  "description": "RAG for Jupyter Notebook",
+  "displayName": "Jupyter Notebook Chatbot",
+  "description": "AI-powered assistant for Jupyter Notebooks",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.101.0" 
+    "vscode": "^1.101.0"
   },
   "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "onNotebook:jupyter-notebook"
+    "Machine Learning",
+    "AI"
   ],
   "extensionDependencies": [
-    "ms-python.python"
+    "ms-toolsai.jupyter"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "jupyter-chatbot.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "jupyter-chatbot.openChat",
-        "title": "Open Chatbot",
-        "icon": {
-          "light": "icons/jupyter-chatbot-icon.png",
-          "dark": "icons/jupyter-chatbot-icon.png"
-        }
-      }
-    ],
-    "notebooks": [
-      {
-        "type": "jupyter-chatbot",
-        "displayName": "Jupyter Notebook",
-        "selector": [
-          {
-            "filenamePattern": "*.ipynb"
-          }
-        ]
+        "command": "jupyter-chatbot.testModel",
+        "title": "Test Ollama Connection",
+        "category": "Jupyter Chatbot"
       }
     ],
     "viewsContainers": {
@@ -53,10 +33,33 @@
         {
           "id": "jupyter-chatbot",
           "title": "Jupyter Chatbot",
-          "icon": "icons/jupyter-chatbot-icon.png"
+          "icon": "jupyter-chatbot-icon"
         }
       ]
-    }
+    },
+    "views": {
+      "jupyter-chatbot": [
+        {
+          "id": "jupyter-chatbot-view",
+          "name": "Chat",
+          "type": "webview",
+          "contextualTitle": "Jupyter Chatbot"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "jupyter-chatbot-view",
+        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "jupyter-chatbot-icons",
+        "label": "Jupyter Chatbot Icons",
+        "path": "./icons.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",

@@ -1,0 +1,16 @@
+{
+  "iconDefinitions": {
+    "jupyter-chatbot-icon": {
+      "iconPath": "./icons/jupyter-chatbot-icon.png"
+    }
+  },
+  "viewContainers": {
+    "activitybar": [
+      {
+        "id": "jupyter-chatbot",
+        "title": "Jupyter Chatbot",
+        "icon": "jupyter-chatbot-icon"
+      }
+    ]
+  }
+}
