@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import axios from 'axios';  // REMOVED: Unused imports
+import axios from 'axios';  
 
 class ChatbotViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;

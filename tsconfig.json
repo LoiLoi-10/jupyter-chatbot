@@ -7,7 +7,7 @@
     "rootDir": "src",
     "outDir": "dist",      //  Add output directory
     "strict": true,
-    "esModuleInterop": true,  // Required for axios
+    "esModuleInterop": true,  
     "skipLibCheck": true,     // Avoid unnecessary type checks
     "resolveJsonModule": true,
     "moduleResolution": "node",

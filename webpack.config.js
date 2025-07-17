@@ -3,8 +3,7 @@
 
 const path = require('path');
 const webpack = require('webpack');
-const CopyPlugin = require("copy-webpack-plugin");  // ADDED
-
+const CopyPlugin = require("copy-webpack-plugin");  
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
 

@@ -6,11 +6,12 @@ A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks
 
 - Chat interface accessible from the VS Code activity bar
 - Seamless integration with Jupyter notebooks (*.ipynb files)
-- Powered by local Ollama instance (default port 11435)
+- Powered by local Ollama instance (altered port 11435)
 
 ## Installation
 
 1. Install the extension from VS Code marketplace
+2. Ensure port is configure to 11435 (`$env:OLLAMA_HOST = "127.0.0.1:11435"`)
 2. Ensure Ollama is running locally (`ollama serve`)
 
 ## Usage
