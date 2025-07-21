@@ -5,9 +5,42 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private _context: vscode.ExtensionContext;
     private _ollamaEndpoint = 'http://localhost:11435/api/generate';  
+    private _disposables: vscode.Disposable[] = [];
+    private _messages: { text: string, isUser: boolean }[] = []; // NEW: Message history storage
 
     constructor(context: vscode.ExtensionContext) {
         this._context = context;
+        
+        // Load saved messages from extension state
+        this._messages = context.globalState.get('chatHistory', []); // NEW
+        
+        // Notebook change listeners
+        vscode.window.onDidChangeActiveNotebookEditor(() => {
+            this._updateContext();
+        }, null, this._disposables);
+
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            if (doc.uri.fsPath.endsWith('.ipynb')) {
+                this._updateContext();
+            }
+        }, null, this._disposables);
+    }
+
+    // NEW: Save messages to persistent storage
+    private _saveMessages() {
+        this._context.globalState.update('chatHistory', this._messages);
+    }
+
+    // NEW: Clear history method
+    public clearHistory() {
+        this._messages = [];
+        this._saveMessages();
+        if (this._view) {
+            this._view.webview.postMessage({ 
+                command: 'updateHistory',
+                history: this._messages
+            });
+        }
     }
 
     public resolveWebviewView(
@@ -18,7 +51,10 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
         this._view = webviewView;
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._context.extensionUri]
+            localResourceRoots: [
+                this._context.extensionUri,
+                vscode.Uri.joinPath(this._context.extensionUri, 'node_modules')
+            ]
         };
 
         webviewView.webview.html = this._getWebviewContent(webviewView.webview);
@@ -28,26 +64,52 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(async (message) => {
             switch (message.command) {
                 case 'submit':
+                    // Store user message immediately
+                    this._messages.push({ text: message.text, isUser: true });
+                    this._saveMessages();
+                    
                     const response = await this._getOllamaResponse(message.text);
+                    
+                    // Store bot response
+                    this._messages.push({ text: response, isUser: false });
+                    this._saveMessages();
+                    
+                    // Send all messages to webview
                     this._view?.webview.postMessage({ 
-                        command: 'response', 
-                        text: response
+                        command: 'updateHistory',
+                        history: this._messages
                     });
                     break;
                 
                 case 'getContext':
+                    this._updateContext();
+                    break;
+                
+                // NEW: Handle history request
+                case 'getHistory':
                     this._view?.webview.postMessage({ 
-                        command: 'contextUpdate',
-                        context: this._getNotebookContext()
+                        command: 'updateHistory',
+                        history: this._messages
                     });
                     break;
             }
         });
 
-        // Send initial context
+        // NEW: Send initial history instead of context
+        this._view?.webview.postMessage({ 
+            command: 'updateHistory',
+            history: this._messages
+        });
+        
+        // Also send context
+        this._updateContext();
+    }
+
+    private _updateContext() {
+        const context = this._getNotebookContext();
         this._view?.webview.postMessage({ 
             command: 'contextUpdate',
-            context: this._getNotebookContext()
+            context: context
         });
     }
 
@@ -74,26 +136,36 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
     }
 
     private _getNotebookContext(): string {
-        const editor = vscode.window.activeTextEditor;
-        if (!editor?.document?.fileName.endsWith('.ipynb')) {
-            return "No active Jupyter notebook found.";
-        }
-
         try {
-            const notebook = JSON.parse(editor.document.getText());
-            return notebook.cells
-                .map((cell: any) => {
-                    if (cell.cell_type === 'markdown') {
-                        return `## Markdown\n${cell.source.join('')}`;
-                    } else if (cell.cell_type === 'code') {
-                        return `## Code\n${cell.source.join('')}`;
+            const notebookEditor = vscode.window.activeNotebookEditor;
+            if (!notebookEditor) {
+                return "No active Jupyter notebook found. Open a notebook first.";
+            }
+            
+            const cells = notebookEditor.notebook.getCells();
+            if (!cells.length) {
+                return "Notebook is empty.";
+            }
+            
+            return cells
+                .map(cell => {
+                    if (!cell.document) {
+                        return '';
+                    }
+                    
+                    const content = cell.document.getText();
+                    if (cell.kind === vscode.NotebookCellKind.Code) {
+                        return `## [CODE CELL]\n${content}`;
+                    } else if (cell.kind === vscode.NotebookCellKind.Markup) {
+                        return `## [MARKDOWN CELL]\n${content}`;
                     }
                     return '';
                 })
                 .filter(Boolean)
                 .join('\n\n');
         } catch (error) {
-            return "Failed to parse notebook content.";
+            console.error('Notebook parsing error:', error);
+            return `Error parsing notebook: ${error instanceof Error ? error.message : 'Check console for details'}`;
         }
     }
 
@@ -102,20 +174,38 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
             vscode.Uri.joinPath(this._context.extensionUri, 'media', 'styles.css')
         );
         
+        const toolkitUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode', 'webview-ui-toolkit', 'dist', 'toolkit.min.js')
+        );
+        
+        const csp = `<meta http-equiv="Content-Security-Policy" 
+            content="default-src 'none'; 
+            script-src ${webview.cspSource} 'unsafe-inline'; 
+            style-src ${webview.cspSource} 'unsafe-inline';">`;
+        
         return `<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            ${csp}
             <title>Jupyter Chatbot</title>
             <link href="${styleUri}" rel="stylesheet">
-            <script type="module" src="https://cdn.jsdelivr.net/npm/@vscode/webview-ui-toolkit/dist/toolkit.min.js"></script>
+            <script type="module" src="${toolkitUri}"></script>
         </head>
         <body>
             <div class="chat-container">
                 <div id="context-view">
                     <h3>Notebook Context</h3>
-                    <div id="context-content"></div>
+                    <pre id="context-content" style="
+                        white-space: pre-wrap;
+                        font-family: monospace;
+                        background: var(--vscode-input-background);
+                        padding: 8px;
+                        border-radius: 4px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                    "></pre>
                 </div>
                 <div id="chat-history"></div>
                 <div class="input-area">
@@ -125,6 +215,16 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
             </div>
             <script>
                 const vscode = acquireVsCodeApi();
+                const contextDisplay = document.getElementById('context-content');
+                const historyContainer = document.getElementById('chat-history');
+                
+                // NEW: Restore full history
+                function restoreHistory(history) {
+                    historyContainer.innerHTML = '';
+                    history.forEach(msg => {
+                        addMessage(msg.text, msg.isUser);
+                    });
+                }
                 
                 // Handle messages from extension
                 window.addEventListener('message', event => {
@@ -134,23 +234,22 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
                             addMessage(message.text, false);
                             break;
                         case 'contextUpdate':
-                            updateContext(message.context);
+                            contextDisplay.textContent = message.context;
+                            break;
+                        // NEW: Handle history updates
+                        case 'updateHistory':
+                            restoreHistory(message.history);
                             break;
                     }
                 });
                 
-                function updateContext(context) {
-                    document.getElementById('context-content').textContent = context;
-                }
-                
                 function addMessage(text, isUser) {
-                    const history = document.getElementById('chat-history');
                     const message = document.createElement('div');
                     message.className = isUser ? 'user-message' : 'bot-message';
                     message.textContent = text;
-                    history.appendChild(message);
+                    historyContainer.appendChild(message);
                     // Auto-scroll to bottom
-                    history.scrollTop = history.scrollHeight;
+                    historyContainer.scrollTop = historyContainer.scrollHeight;
                 }
                 
                 document.getElementById('send-button').addEventListener('click', () => {
@@ -163,11 +262,23 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
                     }
                 });
                 
-                // Initial context request
-                vscode.postMessage({ command: 'getContext' });
+                // Request history and context on load
+                window.addEventListener('load', () => {
+                    vscode.postMessage({ command: 'getHistory' });
+                    vscode.postMessage({ command: 'getContext' });
+                });
             </script>
         </body>
         </html>`;
+    }
+
+    dispose() {
+        while (this._disposables.length) {
+            const disposable = this._disposables.pop();
+            if (disposable) {
+                disposable.dispose();
+            }
+        }
     }
 }
 
@@ -185,7 +296,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // 2. Register Chatbot View Provider
     const provider = new ChatbotViewProvider(context);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('jupyter-chatbot-view', provider)
+        vscode.window.registerWebviewViewProvider('jupyter-chatbot-view', provider),
+        provider
     );
 
     // 3. Test command
@@ -195,8 +307,16 @@ export async function activate(context: vscode.ExtensionContext) {
                 const testResponse = await queryOllamaModel("Respond with just 'TEST PASSED'");
                 vscode.window.showInformationMessage(`Ollama response: ${testResponse.trim()}`);
             } catch (error) {
-                vscode.window.showErrorMessage(`Connection failed: ${error}`);
+                vscode.window.showErrorMessage(`Connection failed: ${error instanceof Error ? error.message : String(error)}`);
             }
+        })
+    );
+    
+    // NEW: Clear history command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('jupyter-chatbot.clearHistory', () => {
+            provider.clearHistory();
+            vscode.window.showInformationMessage('Chat history cleared');
         })
     );
 

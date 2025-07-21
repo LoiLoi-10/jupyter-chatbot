@@ -8,9 +8,35 @@ export class ChatbotPanel {
     private _context: vscode.ExtensionContext;
 
     private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext) {
-        this._panel = panel;
-        this._context = context;
-        this._initializeWebview();
+    this._panel = panel;
+    this._context = context;
+    this._initializeWebview();
+    
+    // ADDED: Context update listeners with proper curly braces
+    vscode.window.onDidChangeActiveNotebookEditor(() => {
+        this._updateContext();
+    }, null, this._disposables);
+
+    vscode.workspace.onDidSaveTextDocument(doc => {
+        if (doc.uri.fsPath.endsWith('.ipynb')) {  // FIXED: Added braces
+            this._updateContext();
+        }
+    }, null, this._disposables);
+
+    vscode.workspace.onDidChangeTextDocument(e => {
+        if (e.document.uri.scheme === 'vscode-notebook-cell') {  // FIXED: Added braces
+            this._updateContext();
+        }
+    }, null, this._disposables);
+}
+
+    // ADDED: Helper method to update context
+    private _updateContext() {
+        const context = this._getNotebookContext();
+        this._panel.webview.postMessage({
+            command: 'notebookContext',
+            context: context
+        });
     }
 
     private async _initializeWebview() {
@@ -27,17 +53,16 @@ export class ChatbotPanel {
                         });
                         break;
                     case 'getNotebookContext':
-                        const context = this._getNotebookContext();
-                        this._panel.webview.postMessage({
-                            command: 'notebookContext',
-                            context: context
-                        });
+                        this._updateContext(); // CHANGED: Use helper method
                         break;
                 }
             },
             undefined,
             this._disposables
         );
+        
+        // ADDED: Send initial context
+        this._updateContext();
     }
 
     private async _getOllamaResponse(prompt: string): Promise<string> {
@@ -54,39 +79,66 @@ export class ChatbotPanel {
                     num_ctx: 4096
                 }
             });
-            return response.data.response;
+            return response.data.response || "No response from model"; // ADDED: Fallback
         } catch (error) {
             return `Error: ${error instanceof Error ? error.message : String(error)}`;
         }
     }
 
+    // UPDATED: Improved notebook context parsing
     private _getNotebookContext(): string {
+    try {
         const notebookEditor = vscode.window.activeNotebookEditor;
         if (!notebookEditor) {
-            return "No active notebook found.";
+            return "No active Jupyter notebook found. Open a notebook first.";
+        }
+        
+        const cells = notebookEditor.notebook.getCells();
+        if (!cells.length) {  // FIXED: Added braces
+            return "Notebook is empty.";
         }
         
         let context = "Current Notebook Context:\n";
-        for (const cell of notebookEditor.notebook.getCells()) {
-            if (cell.kind === vscode.NotebookCellKind.Code || 
-                cell.kind === vscode.NotebookCellKind.Markup) {
-                context += `---\n${cell.document.getText()}\n`;
+        for (const cell of cells) {
+            // CRITICAL: Null check for cell.document with braces
+            if (!cell.document) {  // FIXED: Added braces
+                continue;
+            }
+            
+            const content = cell.document.getText();
+            if (cell.kind === vscode.NotebookCellKind.Code) {
+                context += `--- [CODE CELL] ---\n${content}\n`;
+            } else if (cell.kind === vscode.NotebookCellKind.Markup) {
+                context += `--- [MARKDOWN CELL] ---\n${content}\n`;
             }
         }
         
         return context;
+    } catch (error) {
+        console.error("Notebook parsing error:", error);
+        return `Error parsing notebook: ${error instanceof Error ? error.message : 'Check console for details'}`;
     }
+}
 
+    // UPDATED: Added context display panel and CSP
     private _getWebviewContent(): string {
         const toolkitUri = this._panel.webview.asWebviewUri(
             vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode', 'webview-ui-toolkit', 'dist', 'toolkit.min.js')
         );
+
+        // ADDED: Content Security Policy
+        const csp = `<meta http-equiv="Content-Security-Policy" 
+            content="default-src 'none'; 
+            script-src ${this._panel.webview.cspSource} 'unsafe-inline'; 
+            style-src ${this._panel.webview.cspSource} 'unsafe-inline';">
+        `;
 
         return `<!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            ${csp}
             <script type="module" src="${toolkitUri}"></script>
             <style>
                 body {
@@ -100,6 +152,24 @@ export class ChatbotPanel {
                     flex-direction: column;
                     height: 100vh;
                 }
+                
+                /* ADDED: Context panel styles */
+                #context-panel {
+                    border: 1px solid var(--vscode-input-border);
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                }
+                #context-display {
+                    white-space: pre-wrap;
+                    font-family: monospace;
+                    background: var(--vscode-input-background);
+                    padding: 8px;
+                    border-radius: 4px;
+                    font-size: 0.9em;
+                }
+                
                 #messages {
                     flex: 1;
                     overflow-y: auto;
@@ -125,6 +195,12 @@ export class ChatbotPanel {
                     max-width: 80%;
                     margin-right: 20%;
                 }
+                .system-message {
+                    font-style: italic;
+                    color: var(--vscode-descriptionForeground);
+                    text-align: center;
+                    margin: 10px 0;
+                }
                 #input-area {
                     display: flex;
                     gap: 10px;
@@ -141,6 +217,12 @@ export class ChatbotPanel {
             <title>Jupyter Chatbot</title>
         </head>
         <body>
+            <!-- ADDED: Notebook context display panel -->
+            <div id="context-panel">
+                <h3 style="margin-top: 0;">Active Notebook Context</h3>
+                <pre id="context-display">Loading notebook context...</pre>
+            </div>
+            
             <div id="chat-container">
                 <div id="messages"></div>
                 <div class="typing-indicator" id="typing">Assistant is typing...</div>
@@ -156,14 +238,23 @@ export class ChatbotPanel {
                 const inputField = document.getElementById('input');
                 const submitButton = document.getElementById('submit');
                 const typingIndicator = document.getElementById('typing');
+                const contextDisplay = document.getElementById('context-display');
                 
                 window.addEventListener('load', () => {
                     vscode.postMessage({ command: 'getNotebookContext' });
                 });
                 
+                // ADDED: Context update handler
                 window.addEventListener('message', event => {
-                    if (event.data.command === 'notebookContext') {
-                        addMessage('System: Notebook context loaded', 'system');
+                    const message = event.data;
+                    if (message.command === 'notebookContext') {
+                        contextDisplay.textContent = message.context;
+                        addMessage('System: Notebook context updated', 'system');
+                    }
+                    
+                    if (message.command === 'response') {
+                        typingIndicator.style.display = 'none';
+                        addMessage(message.text, 'bot');
                     }
                 });
                 

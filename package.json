@@ -10,7 +10,8 @@
   "description": "AI-powered assistant for Jupyter Notebooks",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.101.0"
+    "vscode": "^1.101.0",
+    "vscode-notebook-renderer": "^1.0.0"
   },
   "categories": [
     "Machine Learning",
@@ -26,20 +27,53 @@
         "command": "jupyter-chatbot.testModel",
         "title": "Test Ollama Connection",
         "category": "Jupyter Chatbot"
+      },
+      {
+        "command": "jupyter-chatbot.refreshContext",
+        "title": "Refresh Notebook Context",
+        "category": "Jupyter Chatbot"
+      },
+      
+      {
+        "command": "jupyter-chatbot.clearHistory",
+        "title": "Clear Chat History",
+        "category": "Jupyter Chatbot"
       }
     ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "jupyter-chatbot.refreshContext",
+          "when": "notebookEditorFocused"
+        },
+        
+        {
+          "command": "jupyter-chatbot.clearHistory",
+          "when": "view == jupyter-chatbot-view"
+        }
+      ],
+      
+      "view/title": [
+        {
+          "command": "jupyter-chatbot.clearHistory",
+          "when": "view == jupyter-chatbot-view",
+          "group": "navigation"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
           "id": "jupyter-chatbot",
           "title": "Jupyter Chatbot",
-          "icon": "jupyter-chatbot-icon"
+          "icon": "icons/jupyter-chatbot-icon.png" 
         }
       ]
     },
     "views": {
       "jupyter-chatbot": [
         {
+          "icon": "icons/jupyter-chatbot-icon.png",
           "id": "jupyter-chatbot-view",
           "name": "Chat",
           "type": "webview",
@@ -50,7 +84,7 @@
     "viewsWelcome": [
       {
         "view": "jupyter-chatbot-view",
-        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)"
+        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)\n[Refresh Context](command:jupyter-chatbot.refreshContext)\n[Clear History](command:jupyter-chatbot.clearHistory)" 
       }
     ],
     "iconThemes": [
@@ -59,8 +93,23 @@
         "label": "Jupyter Chatbot Icons",
         "path": "./icons.json"
       }
+    ],
+    "notebookProvider": [
+      {
+        "viewType": "jupyter-notebook",
+        "displayName": "Jupyter Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.ipynb"
+          }
+        ]
+      }
     ]
   },
+  "activationEvents": [
+    "onNotebookEditor:jupyter-notebook"
+     
+  ],
   "scripts": {
     "vscode:prepublish": "npm run build",
     "compile": "webpack",
@@ -79,6 +128,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.4",
     "@types/vscode": "^1.101.0",
+    "@types/vscode-notebook-renderer": "^1.0.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.11",
