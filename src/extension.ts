@@ -6,13 +6,13 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
     private _context: vscode.ExtensionContext;
     private _ollamaEndpoint = 'http://localhost:11435/api/generate';  
     private _disposables: vscode.Disposable[] = [];
-    private _messages: { text: string, isUser: boolean }[] = []; // NEW: Message history storage
+    private _messages: { text: string, isUser: boolean }[] = []; 
 
     constructor(context: vscode.ExtensionContext) {
         this._context = context;
         
-        // Load saved messages from extension state
-        this._messages = context.globalState.get('chatHistory', []); // NEW
+        
+        this._messages = context.globalState.get('chatHistory', []); 
         
         // Notebook change listeners
         vscode.window.onDidChangeActiveNotebookEditor(() => {
@@ -26,12 +26,12 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
         }, null, this._disposables);
     }
 
-    // NEW: Save messages to persistent storage
+    // Save messages to persistent storage
     private _saveMessages() {
         this._context.globalState.update('chatHistory', this._messages);
     }
 
-    // NEW: Clear history method
+    // Clear history method
     public clearHistory() {
         this._messages = [];
         this._saveMessages();
@@ -85,7 +85,7 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
                     this._updateContext();
                     break;
                 
-                // NEW: Handle history request
+                // Handle history request
                 case 'getHistory':
                     this._view?.webview.postMessage({ 
                         command: 'updateHistory',
@@ -95,7 +95,7 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
             }
         });
 
-        // NEW: Send initial history instead of context
+        // Send initial history instead of context
         this._view?.webview.postMessage({ 
             command: 'updateHistory',
             history: this._messages
@@ -136,38 +136,40 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
     }
 
     private _getNotebookContext(): string {
-        try {
-            const notebookEditor = vscode.window.activeNotebookEditor;
-            if (!notebookEditor) {
-                return "No active Jupyter notebook found. Open a notebook first.";
-            }
-            
-            const cells = notebookEditor.notebook.getCells();
-            if (!cells.length) {
-                return "Notebook is empty.";
-            }
-            
-            return cells
-                .map(cell => {
-                    if (!cell.document) {
-                        return '';
-                    }
-                    
-                    const content = cell.document.getText();
-                    if (cell.kind === vscode.NotebookCellKind.Code) {
-                        return `## [CODE CELL]\n${content}`;
-                    } else if (cell.kind === vscode.NotebookCellKind.Markup) {
-                        return `## [MARKDOWN CELL]\n${content}`;
-                    }
-                    return '';
-                })
-                .filter(Boolean)
-                .join('\n\n');
-        } catch (error) {
-            console.error('Notebook parsing error:', error);
-            return `Error parsing notebook: ${error instanceof Error ? error.message : 'Check console for details'}`;
+    try {
+        const notebookEditor = vscode.window.activeNotebookEditor;
+        if (!notebookEditor) {
+            return "No active Jupyter notebook found. Open a notebook first.";
         }
+        
+        const cells = notebookEditor.notebook.getCells();
+        if (!cells.length) {
+            return "Notebook is empty.";
+        }
+        
+        return cells
+            .map((cell, index) => {
+                if (!cell.document) {
+                    return '';
+                }
+                
+                const content = cell.document.getText();
+                const cellNumber = index + 1;  
+                if (cell.kind === vscode.NotebookCellKind.Code) {
+                    return `[${cellNumber}. CODE CELL]\n${content}`;
+                } else if (cell.kind === vscode.NotebookCellKind.Markup) {
+                    return `[${cellNumber}. MARKDOWN CELL]\n${content}`;
+                }
+                return '';
+            })
+            .filter(Boolean)
+           
+            .join('\n\n');  
+    } catch (error) {
+        console.error('Notebook parsing error:', error);
+        return `Error parsing notebook: ${error instanceof Error ? error.message : 'Check console for details'}`;
     }
+}
 
     private _getWebviewContent(webview: vscode.Webview): string {
         const styleUri = webview.asWebviewUri(
@@ -312,7 +314,7 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
     
-    // NEW: Clear history command
+    // Clear history command
     context.subscriptions.push(
         vscode.commands.registerCommand('jupyter-chatbot.clearHistory', () => {
             provider.clearHistory();

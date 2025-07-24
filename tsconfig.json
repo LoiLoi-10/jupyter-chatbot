@@ -1,20 +1,20 @@
 {
   "compilerOptions": {
-    "module": "commonjs",  // Changed from Node16 to commonjs
-    "target": "ES2020",    // Changed to ES2020 for better VSCode compatibility
+    "module": "commonjs",  
+    "target": "ES2020",    
     "lib": ["ES2020"],
     "sourceMap": true,
     "rootDir": "src",
-    "outDir": "dist",      //  Add output directory
+    "outDir": "dist",      
     "strict": true,
     "esModuleInterop": true,  
-    "skipLibCheck": true,     // Avoid unnecessary type checks
+    "skipLibCheck": true,     
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    /* Additional Checks */
+    
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedParameters": true
   },
-  "include": ["src/**/*.ts"]  //  Include all TypeScript files
+  "include": ["src/**/*.ts"] 
 }

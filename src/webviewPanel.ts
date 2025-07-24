@@ -12,25 +12,25 @@ export class ChatbotPanel {
     this._context = context;
     this._initializeWebview();
     
-    // ADDED: Context update listeners with proper curly braces
+    
     vscode.window.onDidChangeActiveNotebookEditor(() => {
         this._updateContext();
     }, null, this._disposables);
 
     vscode.workspace.onDidSaveTextDocument(doc => {
-        if (doc.uri.fsPath.endsWith('.ipynb')) {  // FIXED: Added braces
+        if (doc.uri.fsPath.endsWith('.ipynb')) {  
             this._updateContext();
         }
     }, null, this._disposables);
 
     vscode.workspace.onDidChangeTextDocument(e => {
-        if (e.document.uri.scheme === 'vscode-notebook-cell') {  // FIXED: Added braces
+        if (e.document.uri.scheme === 'vscode-notebook-cell') {
             this._updateContext();
         }
     }, null, this._disposables);
 }
 
-    // ADDED: Helper method to update context
+    
     private _updateContext() {
         const context = this._getNotebookContext();
         this._panel.webview.postMessage({
@@ -53,7 +53,7 @@ export class ChatbotPanel {
                         });
                         break;
                     case 'getNotebookContext':
-                        this._updateContext(); // CHANGED: Use helper method
+                        this._updateContext(); 
                         break;
                 }
             },
@@ -61,7 +61,7 @@ export class ChatbotPanel {
             this._disposables
         );
         
-        // ADDED: Send initial context
+        
         this._updateContext();
     }
 
@@ -79,13 +79,13 @@ export class ChatbotPanel {
                     num_ctx: 4096
                 }
             });
-            return response.data.response || "No response from model"; // ADDED: Fallback
+            return response.data.response || "No response from model"; 
         } catch (error) {
             return `Error: ${error instanceof Error ? error.message : String(error)}`;
         }
     }
 
-    // UPDATED: Improved notebook context parsing
+    
     private _getNotebookContext(): string {
     try {
         const notebookEditor = vscode.window.activeNotebookEditor;
@@ -94,14 +94,14 @@ export class ChatbotPanel {
         }
         
         const cells = notebookEditor.notebook.getCells();
-        if (!cells.length) {  // FIXED: Added braces
+        if (!cells.length) {  
             return "Notebook is empty.";
         }
         
         let context = "Current Notebook Context:\n";
         for (const cell of cells) {
-            // CRITICAL: Null check for cell.document with braces
-            if (!cell.document) {  // FIXED: Added braces
+            
+            if (!cell.document) {  
                 continue;
             }
             
