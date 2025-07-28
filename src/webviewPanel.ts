@@ -120,13 +120,13 @@ export class ChatbotPanel {
     }
 }
 
-    // UPDATED: Added context display panel and CSP
+    
     private _getWebviewContent(): string {
         const toolkitUri = this._panel.webview.asWebviewUri(
             vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode', 'webview-ui-toolkit', 'dist', 'toolkit.min.js')
         );
 
-        // ADDED: Content Security Policy
+        
         const csp = `<meta http-equiv="Content-Security-Policy" 
             content="default-src 'none'; 
             script-src ${this._panel.webview.cspSource} 'unsafe-inline'; 

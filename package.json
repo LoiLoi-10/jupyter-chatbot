@@ -33,7 +33,6 @@
         "title": "Refresh Notebook Context",
         "category": "Jupyter Chatbot"
       },
-      
       {
         "command": "jupyter-chatbot.clearHistory",
         "title": "Clear Chat History",
@@ -46,13 +45,11 @@
           "command": "jupyter-chatbot.refreshContext",
           "when": "notebookEditorFocused"
         },
-        
         {
           "command": "jupyter-chatbot.clearHistory",
           "when": "view == jupyter-chatbot-view"
         }
       ],
-      
       "view/title": [
         {
           "command": "jupyter-chatbot.clearHistory",
@@ -66,7 +63,7 @@
         {
           "id": "jupyter-chatbot",
           "title": "Jupyter Chatbot",
-          "icon": "icons/jupyter-chatbot-icon.png" 
+          "icon": "icons/jupyter-chatbot-icon.png"
         }
       ]
     },
@@ -84,7 +81,7 @@
     "viewsWelcome": [
       {
         "view": "jupyter-chatbot-view",
-        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)\n[Refresh Context](command:jupyter-chatbot.refreshContext)\n[Clear History](command:jupyter-chatbot.clearHistory)" 
+        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)\n[Refresh Context](command:jupyter-chatbot.refreshContext)\n[Clear History](command:jupyter-chatbot.clearHistory)"
       }
     ],
     "iconThemes": [
@@ -108,7 +105,6 @@
   },
   "activationEvents": [
     "onNotebookEditor:jupyter-notebook"
-     
   ],
   "scripts": {
     "vscode:prepublish": "npm run build",
@@ -127,6 +123,7 @@
     "@babel/preset-env": "^7.28.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.4",
+    "@types/uuid": "^10.0.0",
     "@types/vscode": "^1.101.0",
     "@types/vscode-notebook-renderer": "^1.0.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
