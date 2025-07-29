@@ -254,13 +254,13 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
         );
         
         const toolkitUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode', 'webview-ui-toolkit', 'dist', 'toolkit.min.js')
-        );
+        vscode.Uri.joinPath(this._context.extensionUri, 'media', 'toolkit.min.js')
+    );
         
         const csp = `<meta http-equiv="Content-Security-Policy" 
-            content="default-src 'none'; 
-            script-src ${webview.cspSource} 'unsafe-inline'; 
-            style-src ${webview.cspSource} 'unsafe-inline';">`;
+    content="default-src 'none'; 
+    script-src ${webview.cspSource} 'unsafe-inline' https:; 
+    style-src ${webview.cspSource} 'unsafe-inline';">`;
         
         return `<!DOCTYPE html>
 <html lang="en">

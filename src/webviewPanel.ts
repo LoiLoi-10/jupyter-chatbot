@@ -122,16 +122,21 @@ export class ChatbotPanel {
 
     
     private _getWebviewContent(): string {
-        const toolkitUri = this._panel.webview.asWebviewUri(
-            vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode', 'webview-ui-toolkit', 'dist', 'toolkit.min.js')
-        );
+    // 1. Load toolkit from MEDIA directory (not node_modules)
+    const toolkitUri = this._panel.webview.asWebviewUri(
+        vscode.Uri.joinPath(this._context.extensionUri, 'media', 'toolkit.min.js')
+    );
+
+    // 2. Load your styles.css
+    const styleUri = this._panel.webview.asWebviewUri(
+        vscode.Uri.joinPath(this._context.extensionUri, 'media', 'styles.css')
+    );
 
         
         const csp = `<meta http-equiv="Content-Security-Policy" 
-            content="default-src 'none'; 
-            script-src ${this._panel.webview.cspSource} 'unsafe-inline'; 
-            style-src ${this._panel.webview.cspSource} 'unsafe-inline';">
-        `;
+        content="default-src 'none'; 
+        script-src ${this._panel.webview.cspSource} 'unsafe-inline' https:; 
+        style-src ${this._panel.webview.cspSource} 'unsafe-inline';">`;
 
         return `<!DOCTYPE html>
         <html lang="en">
@@ -314,7 +319,9 @@ export class ChatbotPanel {
                 enableScripts: true,
                 retainContextWhenHidden: true,
                 localResourceRoots: [
-                    vscode.Uri.joinPath(context.extensionUri, 'node_modules')
+                     vscode.Uri.joinPath(context.extensionUri, 'media'),
+            
+                     vscode.Uri.joinPath(context.extensionUri, 'node_modules')
                 ]
             }
         );
