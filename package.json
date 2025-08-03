@@ -7,8 +7,8 @@
     "url": "https://github.com/LoiLoi-10/jupyter-chatbot.git"
   },
   "displayName": "Jupyter Notebook Chatbot",
-  "description": "AI-powered assistant for Jupyter Notebooks",
-  "version": "0.0.1",
+  "description": "AI-powered assistant for Jupyter Notebooks with multi-LLM support",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.101.0",
     "vscode-notebook-renderer": "^1.0.0"
@@ -22,10 +22,31 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Jupyter Chatbot",
+      "properties": {
+        "jupyter-chatbot.llmProvider": {
+          "type": "string",
+          "default": "ollama",
+          "enum": ["ollama", "university-server"],
+          "description": "Select LLM provider"
+        },
+        "jupyter-chatbot.universityApiUrl": {
+          "type": "string",
+          "default": "http://chat.ese.ic.ac.uk:8080",
+          "description": "University LLM API endpoint"
+        },
+        "jupyter-chatbot.model": {
+          "type": "string",
+          "default": "llama3",
+          "description": "Model to use for the LLM"
+        }
+      }
+    },
     "commands": [
       {
         "command": "jupyter-chatbot.testModel",
-        "title": "Test Ollama Connection",
+        "title": "Test LLM Connection",
         "category": "Jupyter Chatbot"
       },
       {
@@ -36,6 +57,26 @@
       {
         "command": "jupyter-chatbot.clearHistory",
         "title": "Clear Chat History",
+        "category": "Jupyter Chatbot"
+      },
+      {
+        "command": "jupyter-chatbot.setUniversityApiKey",
+        "title": "Set University API Key",
+        "category": "Jupyter Chatbot"
+      },
+      {
+        "command": "jupyter-chatbot.setUniversityApiUrl",
+        "title": "Set University API URL",
+        "category": "Jupyter Chatbot"
+      },
+      {
+        "command": "jupyter-chatbot.refreshModels",
+        "title": "Refresh Available Models",
+        "category": "Jupyter Chatbot"
+      },
+      {
+        "command": "jupyter-chatbot.listModels",
+        "title": "List Available Models",
         "category": "Jupyter Chatbot"
       }
     ],
@@ -48,11 +89,28 @@
         {
           "command": "jupyter-chatbot.clearHistory",
           "when": "view == jupyter-chatbot-view"
+        },
+        {
+          "command": "jupyter-chatbot.setUniversityApiKey",
+          "when": "view == jupyter-chatbot-view"
+        },
+        {
+          "command": "jupyter-chatbot.setUniversityApiUrl",
+          "when": "view == jupyter-chatbot-view"
+        },
+        {
+          "command": "jupyter-chatbot.refreshModels",
+          "when": "view == jupyter-chatbot-view"
         }
       ],
       "view/title": [
         {
           "command": "jupyter-chatbot.clearHistory",
+          "when": "view == jupyter-chatbot-view",
+          "group": "navigation"
+        },
+        {
+          "command": "jupyter-chatbot.setUniversityApiKey",
           "when": "view == jupyter-chatbot-view",
           "group": "navigation"
         }
@@ -81,7 +139,7 @@
     "viewsWelcome": [
       {
         "view": "jupyter-chatbot-view",
-        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)\n[Refresh Context](command:jupyter-chatbot.refreshContext)\n[Clear History](command:jupyter-chatbot.clearHistory)"
+        "contents": "Welcome to Jupyter Chatbot!\n[Test Connection](command:jupyter-chatbot.testModel)\n[Refresh Models](command:jupyter-chatbot.refreshModels)\n[Refresh Context](command:jupyter-chatbot.refreshContext)\n[Clear History](command:jupyter-chatbot.clearHistory)\n[Set API Key](command:jupyter-chatbot.setUniversityApiKey)\n[Set API URL](command:jupyter-chatbot.setUniversityApiUrl)"
       }
     ],
     "iconThemes": [

@@ -6,4 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release    [Needs to fix at the end.]: #
+### Added
+- Imperial College London LLM integration
+- Secure API key storage for university users
+- Dynamic model selection UI

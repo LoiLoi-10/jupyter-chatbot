@@ -9,6 +9,31 @@
     box-sizing: border-box;
 }
 
+/* ADDED: Styles for LLM info toggle */
+.toggle-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 5px;
+}
+
+#toggle-llm-btn {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-border);
+    padding: 3px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+#toggle-llm-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+#llm-info-container {
+    transition: opacity 0.3s ease;
+}
+
 .sessions-panel {
     width: 100%;
     margin-bottom: 10px;
@@ -148,6 +173,14 @@
     cursor: pointer;
     border-radius: 4px;
     align-self: flex-end;
+}
+
+.config-button {
+    margin-right: 10px;
+}
+.button-spacer {
+    display: inline-block;
+    width: 15px;
 }
 
 #new-session-btn {

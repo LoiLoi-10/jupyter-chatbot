@@ -1,18 +1,26 @@
 # Jupyter Chatbot Extension
 
-A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks, integrated with Ollama.
+A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks, integrated with Ollama and Imperial College London's LLM servers.
 
 ## Features
 
 - Chat interface accessible from the VS Code activity bar
 - Seamless integration with Jupyter notebooks (*.ipynb files)
 - Powered by local Ollama instance (altered port 11435)
-
+- **Imperial College London Support**: Access university LLM servers with API key authentication
+- Real-time model updates from university servers
+- Secure API key storage in VS Code secret manager
+- Dual-mode operation (local vs university servers)
+- Automatic model synchronization for university users (Deepseek, Qwen, Gemma etc..)
 ## Installation
 
 1. Install the extension from VS Code marketplace
 2. Ensure port is configure to 11435 (`$env:OLLAMA_HOST = "127.0.0.1:11435"`)
-2. Ensure Ollama is running locally (`ollama serve`)
+3. Ensure Ollama is running locally (`ollama serve`)
+- **Imperial College London Support**: 
+1. Request permission/authentication from appropiate supervisor
+2. Generate unique Api-Key 
+3. Save Api-Key inside VS Code safe storage using `Set API Key` button
 
 ## Usage
 
@@ -25,6 +33,7 @@ A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks
 - VS Code v1.101.0 or newer
 - Ollama installed and running
 - Python extension (ms-python.python)
+- Api-Key Authentication (ICL LLM)
 
 ## Configuration
 
