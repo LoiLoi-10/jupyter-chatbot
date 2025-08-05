@@ -34,7 +34,7 @@ export class LLMService {
         const config = await this.getConfig();
         const fullPrompt = `Notebook Context:\n${context}\n\nQuestion: ${prompt}\nAnswer:`;
 
-        // Validate model for university server (without automatic reset)
+        // Validate model for university server (without automatic reset, not working currently...)
         if (config.provider === 'university-server') {
             const apiKey = await this.context.secrets.get('universityApiKey');
             if (apiKey) {

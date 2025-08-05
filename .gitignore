@@ -1,4 +1,4 @@
-# Build artifacts
+# Build artifacts   (Ensure all files are stored safely, not all files are needed in the repo and may not be inside in the main VS code directory)
 /dist
 /out
 

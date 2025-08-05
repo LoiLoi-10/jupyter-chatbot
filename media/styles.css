@@ -9,7 +9,7 @@
     box-sizing: border-box;
 }
 
-/* ADDED: Styles for LLM info toggle */
+
 .toggle-container {
     display: flex;
     justify-content: flex-end;

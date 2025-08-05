@@ -360,7 +360,7 @@ class ChatbotViewProvider implements vscode.WebviewViewProvider {
             }
         });
 
-        // CRITICAL FIX: Send initial state after webview is ready
+        // Send initial state after webview is ready
         setTimeout(() => {
             this._updateWebview();
             this._updateContext();
