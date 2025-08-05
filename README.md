@@ -37,7 +37,10 @@ A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks
 
 ## Configuration
 
-No additional configuration required. The extension automatically connects to Ollama on port 11435.
+The extension must manually connect to Ollama on port 11435 (Local Ollama). 
+To access ICL server and models, authentication and unique API-Key generation is required. 
+The Zscaler VPN is required to access college network and Wifi connection is needed.
+
 
 ## Development
 
