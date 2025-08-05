@@ -47,4 +47,4 @@ A VS Code extension that adds AI-powered chat functionality to Jupyter notebooks
 ```bash
 npm install
 npm run package
-code --install-extension dist/jupyter-chatbot-0.0.1.vsix --force
+code --install-extension dist/jupyter-chatbot-0.0.3.vsix --force
